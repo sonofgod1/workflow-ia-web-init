@@ -1,6 +1,6 @@
 # workflow-ia-web — instalador
 
-Instala [workflow-ia-web](https://github.com/OWNER/workflow-ia-web) en cualquier proyecto web existente con un solo comando.
+Agrega [workflow-ia-web](https://github.com/OWNER/workflow-ia-web) a cualquier proyecto web con un solo comando — nuevo o existente.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/OWNER/workflow-ia-web/main/init.sh | bash
@@ -8,17 +8,70 @@ curl -fsSL https://raw.githubusercontent.com/OWNER/workflow-ia-web/main/init.sh 
 
 ---
 
-## ¿Qué hace este script?
+## Elige tu punto de entrada
 
-`init.sh` agrega el workflow a tu proyecto sin pisar nada. Específicamente:
+Hay tres formas de empezar según tu situación:
 
-1. **Verifica** que estás en un repositorio Git (o te ofrece inicializarlo)
-2. **Detecta** el stack web existente (Next.js, Astro, Nuxt, Tailwind, TypeScript, etc.) y lo informa
+### 🟢 Proyecto nuevo desde cero
+
+Usa el repo principal directamente como GitHub Template — es la forma más limpia:
+
+1. Haz clic en **Use this template** en [workflow-ia-web](https://github.com/OWNER/workflow-ia-web)
+2. Crea el repositorio del proyecto
+3. Clónalo y abre Claude Code
+4. Ejecuta `/git-setup` → `/brief`
+
+No necesitas `init.sh` para este caso.
+
+---
+
+### 🟡 Proyecto nuevo, sin usar el Template button
+
+Directorio vacío, quieres el workflow pero no usaste el Template button de GitHub:
+
+```bash
+mkdir mi-proyecto && cd mi-proyecto
+git init
+curl -fsSL https://raw.githubusercontent.com/OWNER/workflow-ia-web/main/init.sh | bash
+```
+
+El script detecta que no hay commits y crea el commit inicial automáticamente.
+
+---
+
+### 🔵 Proyecto existente
+
+Ya tienes código. Quieres agregar el workflow sin tocar nada:
+
+```bash
+cd mi-proyecto-existente
+curl -fsSL https://raw.githubusercontent.com/OWNER/workflow-ia-web/main/init.sh | bash
+```
+
+El script preserva todo lo que ya existe: `CLAUDE.md`, comandos previos en `.claude/commands/`, `.gitignore`, código de aplicación. No crea commits automáticos — te sugiere el comando para que tú lo ejecutes.
+
+---
+
+En los tres casos, una vez que termina el script el flujo es el mismo:
+
+```
+1. Personaliza CLAUDE.md          → ajusta el Norte del proyecto
+2. claude                         → abre Claude Code
+3. /git-setup                     → branches + hooks de Git + tag v0.0.1
+4. /brief                         → punto de entrada real del proyecto
+```
+
+---
+
+## ¿Qué hace el script exactamente?
+
+1. **Verifica** que estás en un repositorio Git — o te ofrece inicializarlo si no existe
+2. **Detecta** el stack web presente: Next.js, Astro, Nuxt, SvelteKit, Tailwind, TypeScript, Vercel, Netlify, etc.
 3. **Descarga** todos los archivos del workflow desde el repo principal usando la GitHub Tree API
 4. **Preserva** `CLAUDE.md` si ya existe — nunca lo sobreescribe
 5. **Pregunta** antes de sobreescribir `.claude/commands/` si ya hay comandos instalados
-6. **Actualiza** `.gitignore` con las entradas necesarias para el workflow
-7. **Crea** el commit inicial si el repositorio no tiene ninguno
+6. **Actualiza** `.gitignore` con las entradas necesarias (`.env`, `node_modules/`, `.next/`, etc.)
+7. **Crea** el commit inicial solo si el repo no tiene ningún commit todavía
 
 Lo que **no** hace:
 - No toca código de aplicación existente
@@ -32,66 +85,30 @@ Lo que **no** hace:
 
 - `git` instalado y en el PATH
 - `curl` instalado y en el PATH
-- Repositorio Git inicializado (o el script lo inicializa con tu permiso)
 
 ---
 
-## Formas de instalación
+## Opciones del script
 
-### Opción A — curl directo (recomendado)
-
-Desde la raíz de tu proyecto:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/OWNER/workflow-ia-web/main/init.sh | bash
-```
-
-### Opción B — Descargar y revisar primero
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/OWNER/workflow-ia-web/main/init.sh -o init.sh
-# Revisa el script antes de ejecutarlo
-cat init.sh
-bash init.sh
-```
-
-### Opción C — Dry run (sin escribir nada)
+### Dry run — ver qué se instalaría sin escribir nada
 
 ```bash
 bash init.sh --dry-run
 ```
 
-Muestra qué se instalaría sin modificar ningún archivo.
+### Descargar y revisar antes de ejecutar
 
-### Opción D — Con token de GitHub (para repos privados o evitar rate limit)
+```bash
+curl -fsSL https://raw.githubusercontent.com/OWNER/workflow-ia-web/main/init.sh -o init.sh
+cat init.sh   # revísalo
+bash init.sh
+```
+
+### Con token de GitHub (repos privados o evitar rate limit)
 
 ```bash
 GITHUB_TOKEN=tu_token_aqui \
   curl -fsSL https://raw.githubusercontent.com/OWNER/workflow-ia-web/main/init.sh | bash
-```
-
----
-
-## Después de instalar
-
-Una vez que el script termina, el flujo es siempre el mismo:
-
-```
-1. Personaliza CLAUDE.md
-   → Cambia "Norte del proyecto" con el objetivo real del sitio.
-   → Actualiza el tipo de proyecto (landing, ecommerce, webapp, etc.)
-   → El stack se formaliza más adelante en /architect.
-
-2. Abre Claude Code
-   claude
-
-3. Ejecuta /git-setup
-   → Crea las branches develop + feature/*
-   → Instala los hooks de Git (pre-commit, pre-push, commit-msg)
-   → Crea el tag v0.0.1
-
-4. Ejecuta /brief
-   → Punto de entrada real del proyecto.
 ```
 
 ---
@@ -129,7 +146,7 @@ sync-workflow.sh       Script para actualizaciones futuras
 
 ## Actualizaciones futuras
 
-Este script instala. Para actualizaciones posteriores, usa el script de sync que viene incluido:
+Este script instala. Para actualizaciones posteriores, usa `sync-workflow.sh`:
 
 ```bash
 bash sync-workflow.sh           # actualiza comandos y hooks
@@ -142,16 +159,12 @@ bash sync-workflow.sh --dry-run # previsualiza qué cambiaría
 
 ## Estructura de los dos repositorios
 
-Este instalador es el repositorio complementario del template principal:
-
 | Repositorio | Propósito |
 |-------------|-----------|
-| `OWNER/workflow-ia-web` | Template principal con todos los archivos del workflow. Se usa como GitHub Template para proyectos nuevos o como fuente del instalador. |
+| `OWNER/workflow-ia-web` | Template principal. Contiene todos los archivos del workflow. Se usa como GitHub Template o como fuente del instalador. |
 | `OWNER/workflow-ia-web-init` | Solo contiene `init.sh` y este README. URL estable para el curl de instalación. |
 
-### ¿Por qué dos repositorios?
-
-La URL del curl de instalación debe ser estable y corta. Si el script vive en el repo principal, cualquier reorganización de carpetas rompe la URL publicada. El repo de init es mínimo e inmutable: solo el script y su documentación.
+**¿Por qué dos repositorios?** La URL del curl debe ser estable. Si el script viviera en el repo principal, cualquier reorganización de carpetas rompería la URL publicada. Este repo es mínimo e inmutable: solo el script y su documentación.
 
 ---
 
@@ -164,26 +177,22 @@ WORKFLOW_REPO="OWNER/workflow-ia-web"   # ← tu usuario/org en GitHub
 BRANCH="main"                           # ← branch de distribución
 ```
 
-Y actualiza la URL del curl en este README:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/TU_ORG/workflow-ia-web/main/init.sh | bash
-```
+Y actualiza la URL del curl en este README.
 
 ---
 
 ## Troubleshooting
 
-**Error: "Error de GitHub API: Not Found"**
-El repositorio aún no está publicado en GitHub, o `WORKFLOW_REPO` en el script no es correcto. Verifica que el repo exista y sea público (o que `GITHUB_TOKEN` tenga acceso).
+**"Error de GitHub API: Not Found"**
+El repositorio aún no está publicado, o `WORKFLOW_REPO` en el script es incorrecto. Verifica que el repo exista y sea público (o que `GITHUB_TOKEN` tenga acceso si es privado).
 
-**Error: "curl es necesario"**
-Instala curl: `sudo apt install curl` (Ubuntu/Debian) o `brew install curl` (macOS).
+**"curl es necesario"**
+`sudo apt install curl` (Ubuntu/Debian) · `brew install curl` (macOS)
 
-**El script termina pero no hay archivos**
-Revisa la salida del script — habrá advertencias con el HTTP code de cada archivo fallido. Si todos son 404, el repositorio fuente no existe todavía.
+**El script termina sin archivos instalados**
+Habrá advertencias con el HTTP code de cada descarga fallida. Si todos son 404, el repo fuente no existe todavía.
 
-**Quiero reinstalar desde cero**
+**Reinstalar desde cero**
 ```bash
 rm -rf .claude/ git-hooks/ docs/ sync-workflow.sh
 bash init.sh
