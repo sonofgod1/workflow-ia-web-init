@@ -15,7 +15,7 @@ set -euo pipefail
 
 # ─── Configuración ────────────────────────────────────────────────────────────
 
-WORKFLOW_REPO="OWNER/workflow-ia-web"   # ← Reemplazar con tu usuario/org de GitHub
+WORKFLOW_REPO="sonofgod1/workflow-ia-web"   # ← Reemplazar con tu usuario/org de GitHub
 BRANCH="main"
 GITHUB_API="https://api.github.com"
 RAW_BASE="https://raw.githubusercontent.com/$WORKFLOW_REPO/$BRANCH"
