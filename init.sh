@@ -15,7 +15,7 @@ set -euo pipefail
 
 # ─── Configuración ────────────────────────────────────────────────────────────
 
-WORKFLOW_REPO="sonofgod1/workflow-ia-web"   # ← Reemplazar con tu usuario/org de GitHub
+WORKFLOW_REPO="OWNER/workflow-ia-web"   # ← Reemplazar con tu usuario/org de GitHub
 BRANCH="main"
 GITHUB_API="https://api.github.com"
 RAW_BASE="https://raw.githubusercontent.com/$WORKFLOW_REPO/$BRANCH"
@@ -86,35 +86,42 @@ step "Detectando stack web"
 
 declare -a DETECTED=()
 
+# Nota: cuando hay OR encadenado antes de AND, se usan funciones auxiliares
+# para evitar la ambigüedad de precedencia (A || B && C en bash = A || (B && C))
+file_exists_any() {
+  for f in "$@"; do [ -f "$f" ] && return 0; done
+  return 1
+}
+
 # Frameworks JS/TS
-[ -f "next.config.js" ]  || [ -f "next.config.ts" ]  || [ -f "next.config.mjs" ] && DETECTED+=("Next.js")
-[ -f "nuxt.config.ts" ]  || [ -f "nuxt.config.js" ]  && DETECTED+=("Nuxt")
-[ -f "astro.config.mjs" ] || [ -f "astro.config.ts" ] && DETECTED+=("Astro")
-[ -f "svelte.config.js" ] && DETECTED+=("SvelteKit")
-[ -f "remix.config.js" ]  && DETECTED+=("Remix")
-[ -f "gatsby-config.js" ] || [ -f "gatsby-config.ts" ] && DETECTED+=("Gatsby")
-[ -f "vite.config.js" ]  || [ -f "vite.config.ts" ] && DETECTED+=("Vite")
-[ -f "angular.json" ] && DETECTED+=("Angular")
+file_exists_any "next.config.js" "next.config.ts" "next.config.mjs" && DETECTED+=("Next.js") || true
+file_exists_any "nuxt.config.ts" "nuxt.config.js"                   && DETECTED+=("Nuxt") || true
+file_exists_any "astro.config.mjs" "astro.config.ts"                && DETECTED+=("Astro") || true
+[ -f "svelte.config.js" ]                                           && DETECTED+=("SvelteKit") || true
+[ -f "remix.config.js" ]                                            && DETECTED+=("Remix") || true
+file_exists_any "gatsby-config.js" "gatsby-config.ts"               && DETECTED+=("Gatsby") || true
+file_exists_any "vite.config.js" "vite.config.ts"                   && DETECTED+=("Vite") || true
+[ -f "angular.json" ]                                               && DETECTED+=("Angular") || true
 
 # CMS y plataformas
-[ -f "sanity.config.ts" ] || [ -f "sanity.config.js" ] && DETECTED+=("Sanity CMS")
-[ -f "contentlayer.config.ts" ] && DETECTED+=("Contentlayer")
-[ -f "payload.config.ts" ] && DETECTED+=("Payload CMS")
-[ -f "wp-config.php" ] && DETECTED+=("WordPress")
+file_exists_any "sanity.config.ts" "sanity.config.js"               && DETECTED+=("Sanity CMS") || true
+[ -f "contentlayer.config.ts" ]                                     && DETECTED+=("Contentlayer") || true
+[ -f "payload.config.ts" ]                                          && DETECTED+=("Payload CMS") || true
+[ -f "wp-config.php" ]                                              && DETECTED+=("WordPress") || true
 
 # Build y package
-[ -f "package.json" ]     && DETECTED+=("Node.js / npm")
-[ -f "pnpm-lock.yaml" ]   && DETECTED+=("pnpm")
-[ -f "bun.lockb" ]        && DETECTED+=("Bun")
-[ -f "tsconfig.json" ]    && DETECTED+=("TypeScript")
-[ -f "tailwind.config.js" ] || [ -f "tailwind.config.ts" ] && DETECTED+=("Tailwind CSS")
-[ -f "postcss.config.js" ] && DETECTED+=("PostCSS")
+[ -f "package.json" ]                                               && DETECTED+=("Node.js / npm") || true
+[ -f "pnpm-lock.yaml" ]                                             && DETECTED+=("pnpm") || true
+[ -f "bun.lockb" ]                                                  && DETECTED+=("Bun") || true
+[ -f "tsconfig.json" ]                                              && DETECTED+=("TypeScript") || true
+file_exists_any "tailwind.config.js" "tailwind.config.ts"           && DETECTED+=("Tailwind CSS") || true
+[ -f "postcss.config.js" ]                                          && DETECTED+=("PostCSS") || true
 
 # Hosting / deploy
-[ -f "vercel.json" ]      && DETECTED+=("Vercel (config detectada)")
-[ -f "netlify.toml" ]     && DETECTED+=("Netlify (config detectada)")
-[ -f "Dockerfile" ]       && DETECTED+=("Docker")
-[ -f ".github/workflows" ] && DETECTED+=("GitHub Actions")
+[ -f "vercel.json" ]                                                && DETECTED+=("Vercel (config detectada)") || true
+[ -f "netlify.toml" ]                                               && DETECTED+=("Netlify (config detectada)") || true
+[ -f "Dockerfile" ]                                                 && DETECTED+=("Docker") || true
+[ -d ".github/workflows" ]                                          && DETECTED+=("GitHub Actions") || true
 
 if [ ${#DETECTED[@]} -eq 0 ]; then
   warn "No se detectó stack obvio. El agente lo descubrirá en /discovery o /architect."
@@ -175,12 +182,13 @@ if echo "$TREE_RESPONSE" | grep -q '"message"'; then
   Verifica el valor de WORKFLOW_REPO en este script: $WORKFLOW_REPO"
 fi
 
-# Archivos del workflow a instalar (excluir CLAUDE.md, README.md, init.sh)
+# Extraer paths del JSON de la Tree API.
+# Usamos sed en lugar de grep -oP para compatibilidad con macOS (BSD grep no tiene -P).
 ALL_FILES=$(echo "$TREE_RESPONSE" \
-  | grep -oP '"path":"[^"]*"' \
-  | cut -d'"' -f4 \
-  | grep -v '"')
+  | sed 's/,/\n/g' \
+  | sed -n 's/.*"path":"\([^"]*\)".*/\1/p')
 
+# Filtrar solo los archivos del workflow (excluir CLAUDE.md, README.md, init.sh)
 WORKFLOW_FILES=$(echo "$ALL_FILES" \
   | grep -E "^(\.claude/|git-hooks/|docs/|sync-workflow\.sh|\.gitignore)" \
   | grep -v "^$" || true)
@@ -190,7 +198,7 @@ if [ -z "$WORKFLOW_FILES" ]; then
   Verifica que WORKFLOW_REPO sea correcto: $WORKFLOW_REPO"
 fi
 
-TOTAL=$(echo "$WORKFLOW_FILES" | grep -c "." || true)
+TOTAL=$(echo "$WORKFLOW_FILES" | grep -c "" || true)
 info "$TOTAL archivos a instalar"
 
 # ─── 5. Descargar e instalar archivos ─────────────────────────────────────────
@@ -198,7 +206,6 @@ info "$TOTAL archivos a instalar"
 step "Instalando workflow"
 
 INSTALLED=0
-SKIPPED=0
 ERRORS=0
 
 while IFS= read -r FILE_PATH; do
@@ -207,7 +214,6 @@ while IFS= read -r FILE_PATH; do
   LOCAL_PATH="./$FILE_PATH"
   RAW_URL="$RAW_BASE/$FILE_PATH"
 
-  # Crear directorio si no existe
   $DRY_RUN || mkdir -p "$(dirname "$LOCAL_PATH")"
 
   if $DRY_RUN; then
@@ -320,7 +326,7 @@ else
     echo ""
     info "Commit sugerido:"
     echo "     git add .claude/ git-hooks/ docs/ sync-workflow.sh .gitignore"
-    [ ! $CLAUDE_EXISTS ] && echo "     git add CLAUDE.md"
+    $CLAUDE_EXISTS || echo "     git add CLAUDE.md"
     echo "     git commit -m \"chore: workflow-ia-web instalado\""
   fi
 fi
